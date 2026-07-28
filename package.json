@@ -1,0 +1,26 @@
+{
+  "name": "opencode-fleetview",
+  "version": "0.1.0",
+  "description": "Launch fleetview, the agent roster TUI, from inside opencode with /fleetview",
+  "license": "ISC",
+  "author": "John Costa <costajohnt@gmail.com>",
+  "type": "module",
+  "keywords": ["opencode", "opencode-plugin", "fleetview", "tui", "agents"],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/costajohnt/opencode-fleetview.git"
+  },
+  "homepage": "https://github.com/costajohnt/opencode-fleetview",
+  "bugs": "https://github.com/costajohnt/opencode-fleetview/issues",
+  "files": ["tui.js", "README.md", "LICENSE"],
+  "exports": {
+    ".": "./tui.js",
+    "./tui": "./tui.js"
+  },
+  "scripts": {
+    "test": "node --test \"test/*.test.js\""
+  },
+  "engines": {
+    "opencode": ">=1.18.0"
+  }
+}
