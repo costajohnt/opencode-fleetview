@@ -1,5 +1,8 @@
 import assert from "node:assert/strict"
 import test from "node:test"
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import mod, { findOnPath } from "../tui.js"
 
 test("default export is a TUI plugin module", () => {
@@ -50,6 +53,39 @@ test("missing binary toasts the install one-liner instead of spawning", async ()
 
   assert.equal(toasts.length, 1)
   assert.match(toasts[0].message, /npm i -g fleetview/)
+})
+
+test("a binary that fails to exec resumes the renderer and says so", async () => {
+  const calls = []
+  const toasts = []
+  const layers = []
+  const api = {
+    keymap: { registerLayer: (layer) => layers.push(layer) },
+    ui: { toast: (t) => toasts.push(t), dialog: { clear: () => calls.push("clear") } },
+    renderer: { suspend: () => calls.push("suspend"), resume: () => calls.push("resume") },
+  }
+  await mod.tui(api)
+
+  // An executable file whose interpreter does not exist: it passes the X_OK and
+  // isFile checks that gate the "not installed" path, then fails at spawn. Same
+  // shape as a half-broken install.
+  const dir = mkdtempSync(join(tmpdir(), "oc-fv-"))
+  const bin = join(dir, "fleetview")
+  writeFileSync(bin, "#!/nonexistent/interpreter\n", { mode: 0o755 })
+  const PATH = process.env.PATH
+  process.env.PATH = dir
+  try {
+    await layers[0].commands[0].run()
+  } finally {
+    process.env.PATH = PATH
+    rmSync(dir, { recursive: true, force: true })
+  }
+
+  assert.deepEqual(calls, ["clear", "suspend", "resume"])
+  assert.equal(toasts.length, 1)
+  assert.equal(toasts[0].variant, "error")
+  // The toast must come after resume, or it paints into a suspended screen.
+  assert.equal(calls.at(-1), "resume")
 })
 
 test("findOnPath walks PATH in order and only accepts executables", () => {

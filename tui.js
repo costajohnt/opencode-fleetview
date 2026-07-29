@@ -24,17 +24,34 @@ function isExecutable(file) {
   }
 }
 
-/** Hand the terminal to `bin`, then give it back to the renderer. */
+/**
+ * Hand the terminal to `bin`, then give it back to the renderer. A spawn that
+ * fails outright (on PATH but not executable, missing interpreter) still has to
+ * resume the renderer before it can say anything, or the toast would be painted
+ * into a suspended screen and never seen.
+ */
 async function handover(api, bin) {
   api.renderer.suspend()
+  let failure
   try {
     await new Promise((resolve) => {
       const child = spawn(bin, [], { stdio: "inherit" })
-      child.on("error", resolve)
+      child.on("error", (error) => {
+        failure = error
+        resolve()
+      })
       child.on("close", resolve)
     })
   } finally {
     api.renderer.resume()
+  }
+  if (failure) {
+    api.ui.toast({
+      variant: "error",
+      title: "fleetview failed to start",
+      message: failure.message,
+      duration: 8000,
+    })
   }
 }
 
